@@ -1,0 +1,6 @@
+*.pyc
+*.py~
+*.po~
+*.xml~
+.vscode/tags
+.vscode
