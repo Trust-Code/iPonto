@@ -1,6 +1,9 @@
 import sys
 from PyQt5 import QtGui, QtCore, QtWidgets
 import cv2
+import numpy
+
+from rekognition import Rekognition
 
 face_cascade = cv2.CascadeClassifier('/home/danimar/projetos/python3/lib/python3.6/site-packages/cv2/data/haarcascade_frontalface_default.xml')  # noqa
 
@@ -15,12 +18,59 @@ class QtCapture(QtWidgets.QWidget):
         self.video_frame = QtWidgets.QLabel()
         lay = QtWidgets.QVBoxLayout()
         lay.addWidget(self.video_frame)
+
+        self.cleanup_index = QtWidgets.QPushButton('Cleanup Index Face')
+        self.cleanup_index.clicked.connect(self.cleanup_index_collection)
+
+        self.identifier = QtWidgets.QLineEdit()
+
+        self.index_image = QtWidgets.QPushButton('Save Image to Index')
+        self.index_image.clicked.connect(self.save_image_to_index)
+
+        self.search_image = QtWidgets.QPushButton('Search Image')
+        self.search_image.clicked.connect(self.search_image_from_index)
+        lay.addWidget(self.cleanup_index)
+        lay.addWidget(self.identifier)
+        lay.addWidget(self.index_image)
+        lay.addWidget(self.search_image)
+
+        self.label_user = QtWidgets.QLabel('Resultado...')
+        self.label_user.setAlignment(QtCore.Qt.AlignCenter)
+        lay.addWidget(self.label_user)
+
         self.setLayout(lay)
 
         # ------ Modification ------ #
         self.isCapturing = False
         self.ith_frame = 1
         # ------ Modification ------ #
+
+    def cleanup_index_collection(self):
+        rek = Rekognition('', '')
+        rek.delete_faces()
+
+    def save_image_to_index(self):
+        identifier = self.identifier.text().strip()
+        if len(identifier) > 5:
+            rek = Rekognition('', '')
+            ret, frame = self.cap.read()
+            image = numpy.array(cv2.imencode('.png', frame)[1]).tostring()
+            resp = rek.index_image(image, identifier)
+            print(resp)
+        else:
+            QtWidgets.QMessageBox.warning(
+                self, "Atenção!", "Preencha o identificador!")
+
+    def search_image_from_index(self):
+        rek = Rekognition('', '')
+        ret, frame = self.cap.read()
+        image = numpy.array(cv2.imencode('.png', frame)[1]).tostring()
+        resp = rek.search_face(image)
+        if len(resp['FaceMatches']) == 0:
+            self.label_user.setText('Nenhum rosto encontrado')
+        for face in resp['FaceMatches']:
+            self.label_user.setText(face['Face']['ExternalImageId'])
+        print(resp)
 
     def setFPS(self, fps):
         self.fps = fps
